@@ -16,7 +16,6 @@ def parse_args():
     parser.add_argument('--pre_model', type=str, default='GraphPro')
     parser.add_argument('--f_model', type=str, default='GraphPro')
     parser.add_argument('--pre_model_path', type=str, default='pretrained_model.pt')
-    parser.add_argument('--result_json', type=str, default='')
 
     parser.add_argument('--hour_interval_pre', type=float, default=1)
     parser.add_argument('--hour_interval_f', type=int, default=1)
