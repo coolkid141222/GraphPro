@@ -1,6 +1,7 @@
 import pandas as pd
 import setproctitle
 import importlib
+import json
 from utils.trainer import Trainer
 from utils.logger import Logger, log_exceptions
 import torch
@@ -13,6 +14,7 @@ from utils.parse_args import args
 from os import path
 import datetime
 import sys
+import os
 from copy import deepcopy
 
 sys.path.append("./")
@@ -94,6 +96,28 @@ all_data = [pretrain_data, finetune_data, *test_datas]
 
 recalls, ndcgs = [], []
 
+
+def dump_stage_summary(saved_model_paths):
+    if not args.result_json:
+        return
+    result_path = path.abspath(args.result_json)
+    result_dir = path.dirname(result_path)
+    if result_dir:
+        os.makedirs(result_dir, exist_ok=True)
+    payload = {
+        "pre_model": args.pre_model,
+        "f_model": args.f_model,
+        "plugin": bool(args.plugin),
+        "data_path": args.data_path,
+        "recalls": [float(x) for x in recalls],
+        "ndcgs": [float(x) for x in ndcgs],
+        "avg_recall": float(np.mean(recalls)) if recalls else 0.0,
+        "avg_ndcg": float(np.mean(ndcgs)) if ndcgs else 0.0,
+        "saved_model_paths": [str(x) for x in saved_model_paths],
+    }
+    with open(result_path, "w", encoding="utf-8") as fp:
+        json.dump(payload, fp, ensure_ascii=False, indent=2)
+
 @log_exceptions
 def run():
     saved_model_paths = []
@@ -129,7 +153,7 @@ def run():
                     state_dict[k] = F.normalize(state_dict[k], dim=1)
 
         else:
-            state_dict = torch.load(args.pre_model_path)
+            state_dict = torch.load(args.pre_model_path, map_location=args.device)
 
         new_state_dict = {}
         for k, v in state_dict.items():
@@ -208,6 +232,7 @@ def run():
     logger.info(
         f"recalls: {recalls} \n ndcgs: {ndcgs} \n avg. recall: {np.round(np.mean(recalls), 4)}, avg. ndcg: {np.round(np.mean(ndcgs), 4)}"
     )
+    dump_stage_summary(saved_model_paths)
 
 if __name__ == "__main__":
     run()
